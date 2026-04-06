@@ -62,7 +62,7 @@ def main():
     #         logging.warning(f"INS %02X exists: %04X", ins, sw)
     t0 = time.time()
 
-    # for p2 in range(2, 3):
+    # for p2 in range(1, 4):
     #     sw = 0x9000
     #     address = 0x000000
     #     data = bytearray()

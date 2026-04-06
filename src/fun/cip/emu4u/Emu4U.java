@@ -26,10 +26,13 @@ public class Emu4U extends Applet implements ExtendedLength {
         files = new File[fileCount];
 
         for (short i = 0; i < fileCount; i++) {
-            int size = getInt(bArray, offset);
-            offset += 4;
+            if (bArray[offset] != (byte) 0x00
+                    || bArray[(short) (offset + 1)] != 0x00
+                    || bArray[(short) (offset + 2)] != 0x00
+                    || bArray[(short) (offset + 3)] != 0x00)
+                files[i] = new File(bArray[offset], bArray[(short) (offset + 1)], bArray[(short) (offset + 2)], bArray[(short) (offset + 3)]);
 
-            if (size > 0) files[i] = new File(size);
+            offset += 4;
         }
 
         register();
@@ -78,10 +81,14 @@ public class Emu4U extends Applet implements ExtendedLength {
         short offsetCdata = apdu.getOffsetCdata();
 
         File file = resolveFile(buf[ISO7816.OFFSET_P2]);
-        int addr = getInt3(buf, offsetCdata);
+
+        short chunkIndex = File.getChunkIndex((byte) 0x00, buf[offsetCdata], buf[(short) (offsetCdata + 1)], buf[(short) (offsetCdata + 2)]);
+        short offsetInChunk = File.getOffsetInChunk((byte) 0x00, buf[offsetCdata], buf[(short) (offsetCdata + 1)], buf[(short) (offsetCdata + 2)]);
 
         short le = apdu.setOutgoing();
-        short available = (file.length - addr) <= 0x7FFF ? (short) (file.length - addr) : 0x7FFF;
+        short available = file.getAvailable(chunkIndex, offsetInChunk);
+        if (available == 0) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+
         short toSend = le > available ? available : le;
 
         apdu.setOutgoingLength(toSend);
@@ -89,11 +96,14 @@ public class Emu4U extends Applet implements ExtendedLength {
         while (toSend > 0) {
             available = toSend > blockSize ? blockSize : toSend;
 
-            file.read(addr, available, buf);
+            file.read(chunkIndex, offsetInChunk, available, buf);
             apdu.sendBytes((short) 0, available);
 
             toSend -= available;
-            addr += available;
+
+            offsetInChunk += available;
+            chunkIndex += (short) (offsetInChunk >> File.CHUNK_BITS);
+            offsetInChunk &= File.CHUNK_MASK;
         }
 
     }
@@ -115,34 +125,28 @@ public class Emu4U extends Applet implements ExtendedLength {
         short offsetCdata = apdu.getOffsetCdata();
 
         File file = resolveFile(buf[ISO7816.OFFSET_P2]);
-        int addr = getInt3(buf, offsetCdata);
         short payloadLen = (short) (lc - 3);
 
-        if (addr < 0 || addr + payloadLen > file.length) {
-            ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
-        }
+        short chunkIndex = File.getChunkIndex((byte) 0x00, buf[offsetCdata], buf[(short) (offsetCdata + 1)], buf[(short) (offsetCdata + 2)]);
+        short offsetInChunk = File.getOffsetInChunk((byte) 0x00, buf[offsetCdata], buf[(short) (offsetCdata + 1)], buf[(short) (offsetCdata + 2)]);
+        received -= 3;
 
-        JCSystem.beginTransaction();
-        try {
-            short firstPayloadOffset = (short) (offsetCdata + 3);
-            short firstPayloadLen = (short) (received - 3);
+        short available = file.getAvailable(chunkIndex, offsetInChunk);
+        if (payloadLen > available) ISOException.throwIt(ISO7816.SW_WRONG_DATA);
 
-            if (firstPayloadLen > 0) {
-                file.write(buf, firstPayloadOffset, firstPayloadLen, addr);
-            }
+        short written = 0;
+        while (written < payloadLen) {
 
-            short written = firstPayloadLen;
-            while (written < payloadLen) {
-                short chunk = apdu.receiveBytes(offsetCdata);
-                if (chunk == 0) break;
-                file.write(buf, offsetCdata, chunk, (short) (addr + written));
-                written += chunk;
-            }
+            file.write(chunkIndex, offsetInChunk, received, buf, (short) (offsetCdata + 3));
 
-            JCSystem.commitTransaction();
-        } catch (Exception e) {
-            JCSystem.abortTransaction();
-            ISOException.throwIt(ISO7816.SW_UNKNOWN);
+            written += received;
+
+            offsetInChunk += received;
+            chunkIndex += (short) (offsetInChunk >> File.CHUNK_BITS);
+            offsetInChunk &= File.CHUNK_MASK;
+
+            received = apdu.receiveBytes((short) (offsetCdata + 3));
+            if (received == 0) break;
         }
     }
 
@@ -152,21 +156,5 @@ public class Emu4U extends Applet implements ExtendedLength {
             ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
         }
         return files[i];
-    }
-
-    private static int makeInt(byte b1, byte b2, byte b3, byte b4) {
-        return b1 << 24 | b2 << 16 & 16711680 | b3 << 8 & '\uff00' | b4 & 255;
-    }
-
-    private static int makeInt(short s1, short s2) {
-        return s1 << 16 | s2 & '\uffff';
-    }
-
-    private static int getInt(byte[] bArray, short bOff) throws NullPointerException, ArrayIndexOutOfBoundsException {
-        return makeInt(bArray[bOff], bArray[(short) (bOff + 1)], bArray[(short) (bOff + 2)], bArray[(short) (bOff + 3)]);
-    }
-
-    private static int getInt3(byte[] bArray, short bOff) throws NullPointerException, ArrayIndexOutOfBoundsException {
-        return makeInt((byte) 0x00, bArray[bOff], bArray[(short) (bOff + 1)], bArray[(short) (bOff + 2)]);
     }
 }

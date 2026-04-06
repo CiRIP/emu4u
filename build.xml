@@ -6,7 +6,7 @@
     <property name="ext.ant-javacard" value="ext/ant-javacard"/>
 
     <property name="sdk.globalplatform" value="ext/globalplatform-exports"/>
-    <property name="sdk.javacard" value="ext/javacard-sdks/jc305u4_kit"/>
+    <property name="sdk.javacard" value="ext/javacard-sdks/jc222_kit"/>
 
     <!-- Cleanup target -->
     <target name="clean" description="Delete build output">
@@ -29,7 +29,7 @@
             <cap sources="src"
                  aid="456d753455"
                  output="build/javacard/Emu4U.cap"
-                 ints="true"
+                 ints="false"
                  version="1.0">
                 <applet class="fun.cip.emu4u.Emu4U" aid="456d75345501"/>
                 <import jar="${sdk.globalplatform}/org.globalplatform-1.1/gpapi-globalplatform.jar"
