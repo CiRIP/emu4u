@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build" name="Emu4U">
+
+    <description>JavaCard implementation of a Tamagotchi 4U Touch Card</description>
+
+    <property name="ext.ant-javacard" value="ext/ant-javacard"/>
+
+    <property name="sdk.globalplatform" value="ext/globalplatform-exports"/>
+    <property name="sdk.javacard" value="ext/javacard-sdks/jc305u4_kit"/>
+
+    <!-- Cleanup target -->
+    <target name="clean" description="Delete build output">
+        <delete dir="build"/>
+    </target>
+
+    <!-- Prepare build tools and directories -->
+    <target name="prepare" description="Prepare build">
+        <ant dir="ext/ant-javacard"/>
+
+        <taskdef name="javacard"
+                 classpath="${ext.ant-javacard}/ant-javacard.jar"
+                 classname="pro.javacard.ant.JavaCard"/>
+
+        <mkdir dir="build/javacard"/>
+    </target>
+
+    <target name="build" depends="prepare">
+        <javacard jckit="${sdk.javacard}">
+            <cap sources="src"
+                 aid="456d753455"
+                 output="build/javacard/Emu4U.cap"
+                 ints="true"
+                 version="1.0">
+                <applet class="fun.cip.emu4u.Emu4U" aid="456d75345501"/>
+                <import jar="${sdk.globalplatform}/org.globalplatform-1.1/gpapi-globalplatform.jar"
+                        exps="${sdk.globalplatform}/org.globalplatform-1.1/exports"/>
+            </cap>
+        </javacard>
+    </target>
+</project>

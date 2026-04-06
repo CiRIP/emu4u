@@ -1,0 +1,10 @@
+[project]
+name = "scripts"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "nfcpy>=1.0.4",
+    "pycryptodome>=3.23.0",
+    "pyscard>=2.3.1",
+]

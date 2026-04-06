@@ -1,0 +1,10 @@
+[submodule "ext/ant-javacard"]
+	path = ext/ant-javacard
+	url = https://github.com/promovicz/ant-javacard.git
+	branch = master
+[submodule "ext/javacard-sdks"]
+	path = ext/javacard-sdks
+	url = https://github.com/martinpaljak/oracle_javacard_sdks.git
+[submodule "ext/globalplatform-exports"]
+	path = ext/globalplatform-exports
+	url = https://github.com/OpenJavaCard/globalplatform-exports.git
